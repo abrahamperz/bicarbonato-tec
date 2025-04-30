@@ -1,0 +1,7 @@
+requests
+pyaudio
+wave
+python-dotenv
+google-cloud-speech
+google-cloud-texttospeech
+pydub
