@@ -63,22 +63,4 @@ Una vez configurado todo correctamente, ejecuta el script principal:
 python script.py
 ```
 
----
-
-## ✅ Notas adicionales
-
-- Asegúrate de no subir tu archivo `.env` ni tus credenciales JSON a repositorios públicos.
-- Puedes usar una herramienta como `python-dotenv` si deseas cargar automáticamente las variables de entorno desde `.env`.
-
----
-
-## 📂 Estructura sugerida del proyecto
-
-```
-.
-├── script.py
-├── requirements.txt
-├── .env
-├── archivo_credenciales.json
-└── README.md
 ```

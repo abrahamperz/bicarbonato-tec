@@ -10,7 +10,7 @@ from pydub.playback import play
 
 # Tu API key de Groq
 load_dotenv()
-api_key = os.getenv("API_KEY")
+api_key = os.getenv("GROQ_API_KEY")
 print(f"API Key cargada: {api_key}")
 
 # Configurar credenciales de Google
