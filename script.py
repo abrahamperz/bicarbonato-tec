@@ -42,15 +42,26 @@ def play_audio(filename="response.mp3"):
     play(sound)
 
 # Función de grabación de audio
-def record_audio(filename="audio.wav", duration=5):
+def record_audio(filename="audio.wav", duration=5, device_index=None):
     p = pyaudio.PyAudio()
-    stream = p.open(format=pyaudio.paInt16, channels=1, rate=16000, input=True, frames_per_buffer=1024)
-    print("Recording...")
+
+    # Mostrar el nombre del micrófono que se usará
+    info = p.get_device_info_by_index(device_index)
+    print(f"🎙️ Grabando con: {info['name']}")
+
+    stream = p.open(format=pyaudio.paInt16,
+                    channels=1,
+                    rate=16000,
+                    input=True,
+                    input_device_index=device_index,
+                    frames_per_buffer=1024)
+
+    print("🎧 Grabando...")
     frames = []
     for _ in range(0, int(16000 / 1024 * duration)):
         data = stream.read(1024)
         frames.append(data)
-    print("Recording finished")
+    print("✅ Grabación finalizada.")
     stream.stop_stream()
     stream.close()
     p.terminate()
@@ -59,6 +70,7 @@ def record_audio(filename="audio.wav", duration=5):
         wf.setsampwidth(p.get_sample_size(pyaudio.paInt16))
         wf.setframerate(16000)
         wf.writeframes(b"".join(frames))
+
 
 # Convertir audio a texto
 def transcribe_audio(filename="audio.wav"):
@@ -75,6 +87,28 @@ def transcribe_audio(filename="audio.wav"):
     for result in response.results:
         return result.alternatives[0].transcript
 
+def seleccionar_microfono():
+    p = pyaudio.PyAudio()
+    dispositivos = []
+    print("Micrófonos disponibles:")
+    for i in range(p.get_device_count()):
+        info = p.get_device_info_by_index(i)
+        if info["maxInputChannels"] > 0:
+            print(f"[{i}] {info['name']}")
+            dispositivos.append(i)
+    p.terminate()
+    
+    while True:
+        try:
+            mic_index = int(input("Selecciona el número del micrófono que deseas usar: "))
+            if mic_index in dispositivos:
+                return mic_index
+            else:
+                print("❌ Índice inválido. Intenta de nuevo.")
+        except ValueError:
+            print("❌ Entrada inválida. Debes ingresar un número.")
+
+
 # Convertir texto a voz
 def text_to_speech(text, filename="response.mp3"):
     client = texttospeech.TextToSpeechClient()
@@ -89,27 +123,57 @@ def text_to_speech(text, filename="response.mp3"):
     with open(filename, "wb") as out:
         out.write(response.audio_content)
 
+def listar_microfonos():
+    p = pyaudio.PyAudio()
+    print("Micrófonos disponibles:")
+    for i in range(p.get_device_count()):
+        info = p.get_device_info_by_index(i)
+        if info["maxInputChannels"] > 0:
+            print(f"[{i}] {info['name']}")
+    p.terminate()
+
+def listar_microfonos():
+    p = pyaudio.PyAudio()
+    print("Micrófonos disponibles:")
+    for i in range(p.get_device_count()):
+        info = p.get_device_info_by_index(i)
+        if info["maxInputChannels"] > 0:
+            print(f"[{i}] {info['name']}")
+    p.terminate()
+
+mic_index = seleccionar_microfono()
+
 welcome_message = "Gracias por comunicarte con Colinas del Sur, ¿cómo podemos ayudar?"
 print(welcome_message)
-
-# Decir el mensaje en voz
 text_to_speech(welcome_message, filename="welcome.mp3")
 play_audio("welcome.mp3")
 
 while True:
-    record_audio(duration=10)  # Graba por  segundos
-    transcription = transcribe_audio()  # Transcribe la voz a texto
+    record_audio(duration=10, device_index=mic_index)
+    transcription = transcribe_audio()
+    
+    if transcription is None:
+        print("⚠️ No se detectó voz o hubo un error. Puede que el micrófono no funcione.")
+        mic_index = seleccionar_microfono()
+        continue
+
     if transcription.lower() == "exit":
         break
-    print(f"Texto transcrito: {transcription}")
 
+    print(f"📝 Texto transcrito: {transcription}")
     chat_history.append({"role": "user", "content": transcription})
-    
-    # Llamada a la API de Groq
+
     response = requests.post(
         "https://api.groq.com/openai/v1/chat/completions",
-        headers={"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"},
-        json={"model": "meta-llama/llama-4-scout-17b-16e-instruct", "messages": chat_history, "temperature": 0.7},
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {api_key}"
+        },
+        json={
+            "model": "meta-llama/llama-4-scout-17b-16e-instruct",
+            "messages": chat_history,
+            "temperature": 0.7
+        },
     )
 
     if response.status_code != 200:
@@ -117,8 +181,6 @@ while True:
         break
 
     reply = response.json()["choices"][0]["message"]["content"]
-    print(f"Respuesta: {reply}")
-    
-    # Convertir respuesta de texto a voz
+    print(f"🤖 Respuesta: {reply}")
     text_to_speech(reply)
     play_audio("response.mp3")
